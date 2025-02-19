@@ -1,113 +1,121 @@
-
 module.exports = function (RED) {
+  function JetStreamServerNode(n) {
+    RED.nodes.createNode(this, n);
 
-	function JetStreamServerNode(n) {
-		RED.nodes.createNode(this, n)
-		
-		let node = this;
+    let node = this;
 
-		let timeoutID=0;
+    let timeoutID = 0;
 
-		const events = require('events');
+    const events = require("events");
 
-		this.instance = new events.EventEmitter();
-		this.client = null;
-		this.dependencies = 0;
-		this.status = 'disconnected';
+    this.instance = new events.EventEmitter();
+    this.client = null;
+    this.dependencies = 0;
+    this.status = "disconnected";
 
-		// Options
-		this.server = n.server
-		this.port = n.port
-		this.maxPingOut = 3;
-		this.maxReconnectAttempts = -1;
-		this.pingInterval = 10000;
+    // Options
+    this.server = n.server;
+    this.port = n.port;
+    this.maxPingOut = 3;
+    this.maxReconnectAttempts = -1;
+    this.pingInterval = 10000;
 
-		// Create original client
-		let Client = require('./client');
-		this.client = new Client(null, {
-			servers: this.server + ':' + this.port,
-			maxPingOut: this.maxPingOut,
-			maxReconnectAttempts: this.maxReconnectAttempts,
-			pingInterval: this.pingInterval
-		});
+    // Create original client
+    let Client = require("./client");
 
-		// Setup events
-		this.client.on('disconnect', () => {
-			this.status = 'disconnected';
-			node.log('Disconnected from server: ' + node.server + ':' + node.port);
-		});
+    this.client = new Client(null, {
+      servers: this.server + ":" + this.port,
+      maxPingOut: this.maxPingOut,
+      maxReconnectAttempts: this.maxReconnectAttempts,
+      pingInterval: this.pingInterval,
+      username: this.credentials?.username,
+      password: this.credentials?.password,
+    });
 
-		this.client.on('reconnect', () => {
-			this.status = 'reconnecting';
-			node.log('Reconnecting to server: ' + node.server + ':' + node.port);
-		});
+    // Setup events
+    this.client.on("disconnect", () => {
+      this.status = "disconnected";
+      node.log("Disconnected from server: " + node.server + ":" + node.port);
+    });
 
-		this.client.on('connected', () => {
-			node.log('Connected to JetStream server: ' + node.server + ':' + node.port);
-			this.status = 'connected';
-		});
+    this.client.on("reconnect", () => {
+      this.status = "reconnecting";
+      node.log("Reconnecting to server: " + node.server + ":" + node.port);
+    });
 
-		connect()
+    this.client.on("connected", () => {
+      node.log(
+        "Connected to JetStream server: " + node.server + ":" + node.port
+      );
+      this.status = "connected";
+    });
 
-		this.getInstance = () => {
-			return node.instance;
-		}
+    connect();
 
-		this.allocateClient = function() {
-			node.dependencies++;
+    this.getInstance = () => {
+      return node.instance;
+    };
 
-			// Clone a client
-			let client = node.client.clone();
+    this.allocateClient = function () {
+      node.dependencies++;
 
-			return client;
-		}
+      // Clone a client
+      let client = node.client.clone();
 
-		this.releaseClient = function() {
-			node.dependencies--;
-		}
+      return client;
+    };
 
-		this.getOpts = function() {
-			return {
-				servers: this.server + ':' + this.port,
-				maxPingOut: this.maxPingOut,
-				maxReconnectAttempts: this.maxReconnectAttempts,
-				pingInterval: this.pingInterval
-			}
-		};
+    this.releaseClient = function () {
+      node.dependencies--;
+    };
 
+    this.getOpts = function () {
+      return {
+        servers: this.server + ":" + this.port,
+        maxPingOut: this.maxPingOut,
+        maxReconnectAttempts: this.maxReconnectAttempts,
+        pingInterval: this.pingInterval,
+      };
+    };
 
-    node.on('close', () => {
+    node.on("close", () => {
       clearTimeout(timeoutID);
     });
 
-		function connect() {
-                        clearTimeout(timeoutID);
-			node.log('Connecting to JetStream server: ' + node.server + ':' + node.port);
-			node.client.connect()
-				.then(() => {
-					node.once('close', async () => {
-						try {
-							await node.client.disconnect();
-						} catch(e) {
-							console.log(e);
-						}
-					});
-					node.instance.emit('ready');
-				})
-				.catch((e) => {
-					node.log('Failed to connect to JetStream server')
-					console.log(e);
-					node.error(e);
+    function connect() {
+      clearTimeout(timeoutID);
+      node.log(
+        "Connecting to JetStream server: " + node.server + ":" + node.port
+      );
+      node.client
+        .connect()
+        .then(() => {
+          node.once("close", async () => {
+            try {
+              await node.client.disconnect();
+            } catch (e) {
+              console.log(e);
+            }
+          });
+          node.instance.emit("ready");
+        })
+        .catch((e) => {
+          node.log("Failed to connect to JetStream server");
+          console.log(e);
+          node.error(e);
 
-					// retry
-					timeoutID = setTimeout(function(){
-						connect();
-					}, 3000);
+          // retry
+          timeoutID = setTimeout(function () {
+            connect();
+          }, 3000);
+        });
+    }
+  }
 
-				});
-		};
-
-	}
-
-	RED.nodes.registerType('NATS JetStream Server', JetStreamServerNode)
-}
+  RED.nodes.registerType("NATS JetStream Server", JetStreamServerNode, {
+    credentials: {
+      username: { type: "text" },
+      password: { type: "password" },
+    },
+  });
+};

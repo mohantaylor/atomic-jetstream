@@ -13,7 +13,7 @@ module.exports = class Client extends events.EventEmitter {
         maxReconnectAttempts: -1,
         pingInterval: 10000,
       },
-      opts
+      opts,
     );
     this.status = "disconnected";
     this.nc = nc;
@@ -44,7 +44,7 @@ module.exports = class Client extends events.EventEmitter {
       user: this.opts.username,
       pass: this.opts.password,
     };
-    console.log("CONN", opts);
+
     this.nc = await nats.connect(opts);
     this.waitStatus();
 
@@ -89,7 +89,7 @@ module.exports = class Client extends events.EventEmitter {
       await jsm.streams.add(
         Object.assign(opts, {
           name: streamName,
-        })
+        }),
       );
     } catch (e) {
       throw e;
@@ -161,7 +161,7 @@ module.exports = class Client extends events.EventEmitter {
           console.warn(
             "consumer config(" + k + ") has changed",
             opts.config[k],
-            info.config[k]
+            info.config[k],
           );
           info.config[k] = opts.config[k];
           updated = true;
@@ -185,7 +185,7 @@ module.exports = class Client extends events.EventEmitter {
           "consumer config(filter_subjects) has changed",
           origFilters,
           "to",
-          opts.filters
+          opts.filters,
         );
         updated = true;
       }
@@ -211,7 +211,7 @@ module.exports = class Client extends events.EventEmitter {
       // Not found, so trying to create consumer
       console.log(
         "attempt to create new consumer (durable=" + consumerName + ")",
-        cOpts.config.filter_subjects || cOpts.config.deliver_subject
+        cOpts.config.filter_subjects || cOpts.config.deliver_subject,
       );
       await jsm.consumers.add(streamName, cOpts.config);
       console.log("consumer was created (durable=" + consumerName + ")");
